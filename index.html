@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An SQL portfolio project exploring Australian cancer incidence and mortality data with DuckDB, R and Quarto.">
+  <title>Australian cancer statistics with SQL</title>
+  <style>
+    :root {
+      --ink: #142b2a;
+      --muted: #52625f;
+      --paper: #f4f1e8;
+      --card: #fffdf8;
+      --teal: #087f73;
+      --teal-dark: #075f58;
+      --coral: #d86b4b;
+      --line: #d8d4ca;
+      --white: #ffffff;
+      --shadow: 0 18px 45px rgba(20, 43, 42, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+    a { color: inherit; }
+    img { display: block; max-width: 100%; }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(216, 212, 202, 0.85);
+      background: rgba(244, 241, 232, 0.92);
+      backdrop-filter: blur(12px);
+    }
+    nav { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { font-weight: 800; letter-spacing: -0.02em; text-decoration: none; }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a { color: var(--muted); font-size: 0.92rem; font-weight: 650; text-decoration: none; }
+    .nav-links a:hover, .nav-links a:focus-visible { color: var(--teal-dark); }
+
+    .hero {
+      padding: 88px 0 72px;
+      background:
+        radial-gradient(circle at 84% 20%, rgba(216, 107, 75, 0.16), transparent 25%),
+        radial-gradient(circle at 70% 82%, rgba(8, 127, 115, 0.14), transparent 30%);
+    }
+    .hero-grid { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 64px; align-items: end; }
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--teal-dark);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; max-width: 820px; font-size: clamp(2.9rem, 7vw, 5.9rem); line-height: 0.98; letter-spacing: -0.065em; }
+    .intro { margin: 28px 0 0; max-width: 720px; color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.25rem); }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 20px;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      font-weight: 750;
+      text-decoration: none;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+    .button:hover, .button:focus-visible { transform: translateY(-2px); }
+    .button.primary { color: var(--white); background: var(--ink); }
+    .button.secondary { background: rgba(255, 253, 248, 0.55); }
+
+    .hero-note { border-left: 3px solid var(--coral); padding: 8px 0 8px 22px; color: var(--muted); }
+    .hero-note strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: 1.05rem; }
+
+    section { padding: 78px 0; }
+    .section-heading { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 48px; margin-bottom: 36px; align-items: end; }
+    h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; letter-spacing: -0.04em; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 1.03rem; }
+
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); }
+    .metric { padding: 28px; }
+    .metric + .metric { border-left: 1px solid var(--line); }
+    .metric strong { display: block; font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; letter-spacing: -0.04em; }
+    .metric span { display: block; margin-top: 10px; color: var(--muted); font-size: 0.9rem; }
+
+    .plots { background: var(--ink); color: var(--white); }
+    .plots .section-heading p { color: #c5d1cf; }
+    .plot-grid { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 24px; }
+    figure { margin: 0; overflow: hidden; border-radius: 3px; background: var(--card); box-shadow: 0 22px 55px rgba(0, 0, 0, 0.2); }
+    figure img { width: 100%; height: 100%; object-fit: contain; }
+    figcaption { padding: 16px 20px 20px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); }
+
+    .workflow-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .step { min-height: 210px; padding: 24px; border: 1px solid var(--line); background: var(--card); }
+    .step-num { color: var(--coral); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; }
+    .step h3 { margin: 40px 0 10px; font-size: 1.2rem; }
+    .step p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+    .cta { padding-top: 8px; }
+    .cta-box { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 42px; border-radius: 4px; color: var(--white); background: var(--teal-dark); }
+    .cta-box h2 { max-width: 640px; }
+    .cta-box .button { flex: 0 0 auto; border-color: var(--white); background: var(--white); color: var(--ink); }
+
+    footer { margin-top: 76px; padding: 28px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.86rem; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 20px; }
+
+    @media (max-width: 820px) {
+      .hero-grid, .section-heading, .plot-grid { grid-template-columns: 1fr; gap: 28px; }
+      .workflow-grid { grid-template-columns: repeat(2, 1fr); }
+      .hero { padding-top: 64px; }
+      .hero-note { max-width: 560px; }
+    }
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 26px, 1120px); }
+      .nav-links a:first-child { display: none; }
+      .hero { padding: 52px 0; }
+      h1 { font-size: 3.05rem; }
+      section { padding: 56px 0; }
+      .metrics, .workflow-grid { grid-template-columns: 1fr; }
+      .metric + .metric { border-left: 0; border-top: 1px solid var(--line); }
+      .cta-box { align-items: flex-start; flex-direction: column; padding: 30px 24px; }
+      footer .wrap { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="wrap" aria-label="Primary navigation">
+      <a class="brand" href="#top">Australian cancer SQL</a>
+      <div class="nav-links">
+        <a href="#findings">Findings</a>
+        <a href="#workflow">Workflow</a>
+        <a href="https://github.com/sagrikachugh/australian-cancer-sql">GitHub ↗</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">SQL portfolio project · Australian public data</p>
+          <h1>Making cancer statistics easier to explore.</h1>
+          <p class="intro">I built a reproducible SQL workflow to clean, validate and analyse national cancer incidence and mortality data published by the Australian Institute of Health and Welfare.</p>
+          <div class="actions">
+            <a class="button primary" href="output/cancer_profile_breast_cancer.html">View the full analysis</a>
+            <a class="button secondary" href="https://github.com/sagrikachugh/australian-cancer-sql">Browse the SQL</a>
+          </div>
+        </div>
+        <aside class="hero-note">
+          <strong>Built with DuckDB, R and Quarto</strong>
+          Six analytical queries, five SQL quality checks, automated tests and parameterised reports—all from one reproducible workflow.
+        </aside>
+      </div>
+    </section>
+
+    <section aria-labelledby="snapshot-title">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2 id="snapshot-title">A quick data snapshot</h2>
+          <p>The homepage highlights breast cancer as an example. These values use the latest observed incidence year; projected years remain clearly labelled in the full report.</p>
+        </div>
+        <div class="metrics">
+          <div class="metric"><strong>19,031</strong><span>new cases reported in 2021</span></div>
+          <div class="metric"><strong>64.1</strong><span>age-standardised incidence rate per 100,000</span></div>
+          <div class="metric"><strong>70–74</strong><span>age group with the highest case count in 2021</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="plots" id="findings" aria-labelledby="findings-title">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2 id="findings-title">What the data show</h2>
+          <p>The analysis separates observed and projected values, preserves the published rates, and makes the age distribution visible without treating aggregate data as patient-level evidence.</p>
+        </div>
+        <div class="plot-grid">
+          <figure>
+            <img src="assets/breast-cancer-trend.png" alt="Line chart showing Australian breast cancer incidence and mortality counts over time, with projected years shown using dashed lines.">
+            <figcaption>Incidence and mortality counts for persons. Dashed lines identify AIHW projections.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/breast-cancer-age-profile.png" alt="Horizontal bar chart showing the percentage of known-age breast cancer cases in each five-year age group.">
+            <figcaption>Age distribution of observed cases in the latest available year.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" aria-labelledby="workflow-title">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2 id="workflow-title">From workbook to report</h2>
+          <p>The project is designed to demonstrate SQL in context: data modelling, analytical queries, quality assurance and clear communication of limitations.</p>
+        </div>
+        <div class="workflow-grid">
+          <article class="step"><span class="step-num">01 · CLEAN</span><h3>Prepare the data</h3><p>Download and validate the official AIHW workbooks, then standardise fields in R.</p></article>
+          <article class="step"><span class="step-num">02 · MODEL</span><h3>Load DuckDB</h3><p>Create typed incidence, mortality and cancer-dimension tables with explicit keys.</p></article>
+          <article class="step"><span class="step-num">03 · QUERY</span><h3>Analyse with SQL</h3><p>Use CTEs, joins, parameters and window functions to answer six questions.</p></article>
+          <article class="step"><span class="step-num">04 · VERIFY</span><h3>Test and report</h3><p>Run SQL quality checks and automated tests before rendering the Quarto output.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="wrap cta-box">
+        <h2>See the charts, tables, methods and caveats in the complete report.</h2>
+        <a class="button" href="output/cancer_profile_breast_cancer.html">Open full report →</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Data: AIHW Cancer Data in Australia 2025</span>
+      <span>National aggregate statistics · not patient-level data</span>
+    </div>
+  </footer>
+</body>
+</html>

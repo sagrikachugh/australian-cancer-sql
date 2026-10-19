@@ -58,4 +58,6 @@ for (cancer_code in report_codes) {
   render_report(cancer_code)
 }
 
-message("Pipeline complete: clean -> load -> QA -> tests -> 3 reports.")
+source("R/04_generate_site_assets.R")
+
+message("Pipeline complete: clean -> load -> QA -> tests -> 3 reports -> site assets.")

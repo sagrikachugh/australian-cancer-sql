@@ -10,9 +10,11 @@ Requirements are R 4.3 or later, Quarto CLI, and the R packages listed in `run_a
 Rscript run_all.R
 ```
 
-If the raw workbooks are missing, the cleaning script downloads the official files. If download fails it stops and asks for the real files; it never creates synthetic data. The command cleans and validates the workbooks, rebuilds DuckDB, runs SQL QA, runs tests, and renders three HTML reports in `output/`.
+If the raw workbooks are missing, the cleaning script downloads the official files. If download fails it stops and asks for the real files; it never creates synthetic data. The command cleans and validates the workbooks, rebuilds DuckDB, runs SQL QA, runs tests, renders three HTML reports in `output/`, and refreshes the homepage charts in `assets/`.
 
-Example: [breast cancer profile](https://sagrikachugh.github.io/australian-cancer-sql/output/cancer_profile_breast_cancer.html)
+Project site: [Australian cancer statistics with SQL](https://sagrikachugh.github.io/australian-cancer-sql/)
+
+Example report: [breast cancer profile](https://sagrikachugh.github.io/australian-cancer-sql/output/cancer_profile_breast_cancer.html)
 
 ## SQL analysis
 
