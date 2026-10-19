@@ -1,0 +1,138 @@
+---
+title: "Australian cancer profile"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: cosmo
+params:
+  cancer_code: "breast_cancer"
+execute:
+  echo: false
+  warning: false
+---
+
+```{r}
+#| label: setup
+library(DBI)
+library(duckdb)
+library(dplyr)
+library(ggplot2)
+library(readr)
+
+project_root <- normalizePath("..")
+source(file.path(project_root, "R", "utils.R"))
+con <- dbConnect(duckdb(), dbdir = file.path(project_root, "data", "cancer.duckdb"), read_only = TRUE)
+withr::defer(dbDisconnect(con, shutdown = TRUE))
+
+cancer_code <- params$cancer_code
+cancer <- dbGetQuery(
+  con,
+  "SELECT cancer_name, icd10_codes, mortality_icd10_codes FROM cancer_type WHERE cancer_code = ?",
+  params = list(cancer_code)
+)
+if (nrow(cancer) != 1L) stop("Unknown cancer code: ", cancer_code)
+
+trend <- run_sql(
+  con,
+  file.path(project_root, "sql", "analysis", "02_incidence_trend.sql"),
+  list(cancer_code, cancer_code)
+)
+yoy <- run_sql(
+  con,
+  file.path(project_root, "sql", "analysis", "04_yoy_change_window.sql"),
+  list(cancer_code)
+)
+age_profile <- run_sql(
+  con,
+  file.path(project_root, "sql", "analysis", "06_age_profile.sql"),
+  list(cancer_code, cancer_code)
+)
+qa <- read_csv(file.path(project_root, "output", "qa_report.csv"), show_col_types = FALSE)
+
+latest <- trend |>
+  filter(series == "Incidence", sex == "Persons", !is_projection) |>
+  arrange(year) |>
+  slice_tail(n = 2)
+latest_row <- slice_tail(latest, n = 1)
+direction <- if (nrow(latest) < 2L || anyNA(latest$asr)) {
+  "could not be compared"
+} else if (latest$asr[[2]] > latest$asr[[1]]) {
+  "increased"
+} else if (latest$asr[[2]] < latest$asr[[1]]) {
+  "decreased"
+} else {
+  "was unchanged"
+}
+```
+
+## Summary
+
+For `r cancer$cancer_name` (`r cancer$icd10_codes`), AIHW reported **`r scales::comma(latest_row$count)`** new cases among persons in `r latest_row$year`, with an age-standardised incidence rate of **`r latest_row$asr` per 100,000**. The published ASR `r direction` from the previous observed year. Projected years are shown separately and are not used for this sentence.
+
+`r if (!is.na(cancer$mortality_icd10_codes) && cancer$icd10_codes != cancer$mortality_icd10_codes) paste0("The mortality workbook uses a different ICD-10 definition (", cancer$mortality_icd10_codes, "), so incidence and mortality counts should not be treated as directly comparable for this cancer.") else "The incidence and mortality workbooks use the same published ICD-10 definition for this cancer."`
+
+## Incidence and mortality trends
+
+```{r}
+#| fig-cap: "Published counts for persons; dashed lines denote AIHW projections."
+#| fig-width: 9
+#| fig-height: 5
+trend |>
+  filter(sex == "Persons") |>
+  ggplot(aes(year, count, colour = series, linetype = is_projection)) +
+  geom_line(linewidth = 0.9) +
+  scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), labels = c("Observed", "Projected")) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(x = NULL, y = "Count", colour = NULL, linetype = "Data type") +
+  theme_minimal(base_size = 12)
+```
+
+```{r}
+#| fig-cap: "Published age-standardised rates for persons (2001 Australian Standard Population)."
+#| fig-width: 9
+#| fig-height: 5
+trend |>
+  filter(sex == "Persons") |>
+  ggplot(aes(year, asr, colour = series, linetype = is_projection)) +
+  geom_line(linewidth = 0.9, na.rm = TRUE) +
+  scale_linetype_manual(values = c(`FALSE` = "solid", `TRUE` = "dashed"), labels = c("Observed", "Projected")) +
+  labs(x = NULL, y = "ASR per 100,000", colour = NULL, linetype = "Data type") +
+  theme_minimal(base_size = 12)
+```
+
+## Recent year-on-year incidence change
+
+```{r}
+yoy |>
+  filter(sex == "Persons") |>
+  arrange(desc(year)) |>
+  select(year, asr, previous_asr, absolute_change, percentage_change, is_projection) |>
+  head(10) |>
+  knitr::kable(digits = 2, col.names = c("Year", "ASR", "Previous ASR", "Change", "% change", "Projection"))
+```
+
+## Age profile
+
+```{r}
+#| fig-cap: "Share of observed cases across known 5-year age bands in the latest observed year."
+#| fig-width: 9
+#| fig-height: 5
+ggplot(age_profile, aes(reorder(age_group, seq_along(age_group)), percentage_of_known_age_cases)) +
+  geom_col(fill = "#246B8E") +
+  coord_flip() +
+  labs(x = "Age group", y = "Share of known-age cases (%)") +
+  theme_minimal(base_size = 12)
+```
+
+## Data quality status
+
+```{r}
+knitr::kable(qa, col.names = c("Check", "Table", "Problem rows", "Status"))
+```
+
+## Source and caveats
+
+Source: Australian Institute of Health and Welfare, *Cancer Data in Australia 2025*, Book 1a (Australian Cancer Database incidence) and Book 2a (National Mortality Database mortality), downloaded from the [AIHW data page](https://www.aihw.gov.au/reports/cancer/cancer-data-in-australia/data).
+
+These are national aggregate data, not NSW or record-level data. Rates are used exactly as published; this project does not calculate age standardisation. AIHW incidence is observed through 2021 and projected from 2022 to 2025; NMD mortality is observed through 2023 and projected from 2024 to 2025. Age-profile percentages use known-age bands, while the published all-ages total can include unknown ages.
