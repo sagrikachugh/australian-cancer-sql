@@ -1,6 +1,6 @@
 # Australian cancer statistics with SQL
 
-This small portfolio project loads national Australian cancer incidence and mortality statistics into DuckDB, answers six analytical questions in SQL, tests data quality in SQL, and renders parameterised Quarto reports for breast, colorectal and lung cancer. It demonstrates a reproducible R → DuckDB → SQL → Quarto workflow relevant to analyst work; it is not an analysis of NSW-specific data.
+I built this project to practise a complete SQL analysis workflow using public Australian cancer data. It loads national incidence and mortality statistics into DuckDB, answers six analytical questions in SQL, checks data quality, and renders Quarto reports for breast, colorectal and lung cancer. The data are national rather than NSW-specific.
 
 ## Run
 
@@ -12,7 +12,7 @@ Rscript run_all.R
 
 If the raw workbooks are missing, the cleaning script downloads the official files. If download fails it stops and asks for the real files; it never creates synthetic data. The command cleans and validates the workbooks, rebuilds DuckDB, runs SQL QA, runs tests, and renders three HTML reports in `output/`.
 
-Example: [breast cancer profile](output/cancer_profile_breast_cancer.html)
+Example: [breast cancer profile](https://sagrikachugh.github.io/nsw-cancer-sql/output/cancer_profile_breast_cancer.html)
 
 ## SQL analysis
 
