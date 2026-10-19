@@ -12,7 +12,7 @@ Rscript run_all.R
 
 If the raw workbooks are missing, the cleaning script downloads the official files. If download fails it stops and asks for the real files; it never creates synthetic data. The command cleans and validates the workbooks, rebuilds DuckDB, runs SQL QA, runs tests, and renders three HTML reports in `output/`.
 
-Example: [breast cancer profile](https://sagrikachugh.github.io/nsw-cancer-sql/output/cancer_profile_breast_cancer.html)
+Example: [breast cancer profile](https://sagrikachugh.github.io/australian-cancer-sql/output/cancer_profile_breast_cancer.html)
 
 ## SQL analysis
 
