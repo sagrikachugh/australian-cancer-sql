@@ -1,0 +1,11 @@
+data/raw/
+data/processed/*.csv
+data/*.duckdb
+.Rhistory
+.Rproj.user/
+reports/*_files/
+reports/cancer_profile_*.html
+output/*
+!output/cancer_profile_breast_cancer.html
+!output/.gitkeep
+
